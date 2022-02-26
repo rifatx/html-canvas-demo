@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            font: inherit;
+            vertical-align: baseline;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <title>html canvas demo</title>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <script type="text/javascript">
+        (() => {
+            const radius = 50;
+            const two_pi = 2 * Math.PI;
+            const speed = 500;
+            const startColor = 0xFF;
+            const endColor = startColor << 16;
+
+            let canvas = document.getElementById("canvas");
+            let start;
+
+            let x = radius + 20;
+            let y = radius + 30;
+            let dx = speed;
+            let dy = speed;
+
+            let color = endColor;
+            let colorDirection = 1;
+            let lastColor;
+            let lastColorTime;
+
+            var ctx = canvas.getContext('2d');
+
+            function reverseByte(x) {
+                x = ((x & 0x55555555) << 1) | ((x & 0xAAAAAAAA) >> 1);
+                x = ((x & 0x33333333) << 2) | ((x & 0xCCCCCCCC) >> 2);
+                return ((x & 0x0F0F0F0F) << 4) | ((x & 0xF0F0F0F0) >> 4);
+            }
+
+            function nextColor(t) {
+                if (lastColorTime === undefined) {
+                    lastColorTime = t;
+                }
+
+                if (t - lastColorTime > 100) {
+                    let r = (color & 0x00FF0000) >> 16;
+                    let g = (color & 0x0000FF00) >> 8;
+                    let b = color & 0x000000FF;
+
+                    if (colorDirection === 1) {
+                        color >>= 1;
+                        if (color === startColor) {
+                            colorDirection = -1;
+                        }
+
+                        g = r > 0 ? reverseByte(g) : g;
+                        b = g > 0 ? reverseByte(b) : b;
+                    } else {
+                        color <<= 1;
+                        if (color === endColor) {
+                            colorDirection = 1;
+                        }
+
+                        g = b > 0 ? reverseByte(g) : g;
+                        r = g > 0 ? reverseByte(r) : r;
+                    }
+
+                    lastColorTime = t;
+                    lastColor = '#' + (r << 16 | g << 8 | b).toString(16).padStart(6, 0);
+                }
+
+                return lastColor;
+            }
+
+            function clearCanvas(x, y, w, h) {
+                ctx.fillStyle = "#000000";
+                ctx.fillRect(x, y, w, h);
+            }
+
+            function fillCircle(x, y, r, c) {
+                ctx.fillStyle = c;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, two_pi);
+                ctx.fill();
+            }
+
+            function drawFrame(timestamp) {
+                if (start === undefined) {
+                    start = timestamp;
+                }
+
+                const dt = (timestamp - start) / 1000;
+                start = timestamp;
+
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                canvas.width = width;
+                canvas.height = height;
+
+                dx = x + radius >= width ? -Math.abs(dx) : x <= radius ? Math.abs(dx) : dx;
+                dy = y + radius >= height ? -Math.abs(dy) : y <= radius ? Math.abs(dy) : dy;
+
+                x += dx * dt;
+                y += dy * dt;
+
+                clearCanvas(0, 0, width, height);
+                fillCircle(x, y, radius, nextColor(timestamp));
+
+                window.requestAnimationFrame(drawFrame);
+            }
+
+            window.requestAnimationFrame(drawFrame);
+        })();
+    </script>
+</body>
+
+</html>
